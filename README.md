@@ -2,7 +2,7 @@
 
 A bright, cartoonish endless runner through everyday Lagos — dodge the Danfo, jump the potholes, and chop the Jollof.
 
-Play it in your browser (no download): **https://<username>.github.io/lagos-run/**
+Play it in your browser (no download): **https://kosigbesan.github.io/lagos-run/**
 
 ## The loop
 
