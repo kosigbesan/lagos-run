@@ -136,6 +136,12 @@
   }
   .banner-txt .lev{ color:var(--yellow); }
 
+  #landmark{ position:absolute; top:78px; left:0; right:0; z-index:7; text-align:center; pointer-events:none; opacity:0; }
+  #landmark.show{ animation:landmarkpop 1.7s ease forwards; }
+  @keyframes landmarkpop{ 0%{opacity:0; transform:translateY(-12px) scale(.92)} 14%{opacity:1; transform:translateY(0) scale(1)} 78%{opacity:1} 100%{opacity:0; transform:translateY(-8px)} }
+  #landmark-txt{ font-family:'Bangers',cursive; letter-spacing:1px; font-size:clamp(22px,4.6vw,36px); color:#fff; text-shadow:0 3px 0 rgba(0,0,0,.45),0 0 24px rgba(255,212,0,.45); display:inline-block; background:rgba(10,10,18,.55); border:2px solid rgba(255,212,0,.55); border-radius:12px; padding:4px 18px; }
+  #landmark-txt b{ color:var(--yellow); }
+
   #touch{
     position:absolute; left:0; right:0; bottom:0; z-index:6;
     display:none; justify-content:space-between; padding:0 18px 22px; pointer-events:none;
@@ -174,6 +180,7 @@
   </div>
 
   <div id="banner"><div class="banner-txt" id="banner-txt"></div></div>
+  <div id="landmark"><div id="landmark-txt">📍 UNILAG</div></div>
 
   <div id="touch">
     <div class="grp">
@@ -262,6 +269,40 @@
     { name:'YABA',          emoji:'🌆', sky:'#6fc3ff', skyLow:'#dff1ff', speed:320, dist:0,    obstacle:['danfo','pothole','areaboy'],                        spawn:[0.70,1.30], rain:false },
     { name:'IKEJA',         emoji:'🏙️', sky:'#ffb15c', skyLow:'#ffe2b0', speed:390, dist:400,  obstacle:['danfo','okada','pothole','brt','areaboy'],          spawn:[0.55,1.00], rain:false },
     { name:'LAGOS ISLAND',  emoji:'🌧️', sky:'#7e93ad', skyLow:'#c4d3e2', speed:460, dist:1000, obstacle:['danfo','okada','pothole','brt','flood','areaboy'], spawn:[0.45,0.80], rain:true }
+  ];
+
+  /* ---------- Landmarks (real Lagos places you run past) ---------- */
+  const LANDMARKS = [
+    { dist: 90,   name:'UNILAG' },
+    { dist: 180,  name:'Yaba Market' },
+    { dist: 270,  name:'CcHub' },
+    { dist: 360,  name:'Tejuosho Market' },
+    { dist: 470,  name:'Computer Village' },
+    { dist: 560,  name:'Ikeja City Mall' },
+    { dist: 650,  name:'Allen Avenue' },
+    { dist: 740,  name:'Airport Road' },
+    { dist: 830,  name:'Ojota' },
+    { dist: 920,  name:'Third Mainland Bridge' },
+    { dist: 1080, name:'The Palms' },
+    { dist: 1170, name:'Bar Beach' },
+    { dist: 1260, name:'Eko Hotels' },
+    { dist: 1350, name:'Quilox' },
+    { dist: 1440, name:'Freedom Park' },
+    { dist: 1530, name:'Marina' },
+    { dist: 1620, name:'Lekki Toll Gate' },
+    { dist: 1710, name:'Ajah' }
+  ];
+
+  /* ---------- Billboards (in-world ad slots) ---------- */
+  const ADS = [
+    { logo:'🍢', text:'MAMA NNEKA SUYA', sub:'Best suya on the Island', bg:'#fff3d6' },
+    { logo:'🍚', text:'IYA BOSE JOLLOF', sub:'Catering for your owambe', bg:'#ffe4e1' },
+    { logo:'🥤', text:'ZOBO KING', sub:'Ice-cold, everywhere', bg:'#e6f7ff' },
+    { logo:'💈', text:'K-LEKKI BARBERS', sub:'Fresh cuts, no wahala', bg:'#f0ffe6' },
+    { logo:'🚌', text:'DANFO EXPRESS', sub:'We go reach', bg:'#fff3d6' },
+    { logo:'🏦', text:'TRUST NAIRA', sub:'Save small small', bg:'#e6fff0' },
+    { logo:'👗', text:'ANKARA ARIES', sub:'Owambe ready', bg:'#fde8ff' },
+    { logo:'📢', text:'YOUR AD HERE', sub:'advertise@lagosrun.ng', bg:'#f2f2f2' }
   ];
 
   /* ---------- Collectibles ---------- */
@@ -385,7 +426,8 @@
     best: parseInt(localStorage.getItem('lagos-run-best')||'0',10),
     time:0, ramp:0,
     naira:0, chars:[], ups:[], selectedChar:'lagosian',
-    nairaRun:0, reviveUsed:false, npcTimer:7
+    nairaRun:0, reviveUsed:false, npcTimer:7,
+    landmarkIdx:0, billboards:[], billboardTimer:3
   };
 
   const player = {
@@ -523,6 +565,7 @@
     state.ramp = 0;
     state.nairaRun = 0; state.reviveUsed = false;
     state.npcTimer = 6 + Math.random()*4;
+    state.landmarkIdx = 0; state.billboards.length = 0; state.billboardTimer = 3;
     state.spawnTimer = 1.1;
     state.objs.length = 0; state.particles.length = 0;
     player.lane = 1; player.x = player.targetX = laneX(1);
@@ -614,6 +657,26 @@
     Sound.hit();
   }
 
+  function showLandmark(name){
+    const el = document.getElementById('landmark');
+    document.getElementById('landmark-txt').innerHTML = '📍 <b>' + name + '</b>';
+    el.classList.remove('show'); void el.offsetWidth; el.classList.add('show');
+  }
+  function fireLandmark(lm){
+    const P = perks();
+    const naira = Math.round(50 * P.nairaMult);
+    const pts = Math.round(50 * P.scoreMult);
+    state.nairaRun += naira;
+    state.score += pts;
+    showLandmark(lm.name);
+    addPopup(player.x, player.y - 72, '📍 +₦' + naira, '#ffd400');
+    Sound.naira();
+  }
+  function spawnBillboard(){
+    const ad = ADS[Math.floor(Math.random()*ADS.length)];
+    state.billboards.push({ x: VW + 120, ad, w: 190, h: 58 });
+  }
+
   function addPopup(x,y,text,color){
     state.particles.push({ kind:'pop', x, y, text, color, life:0.9, t:0 });
   }
@@ -676,11 +739,26 @@
     if(newLevel !== state.level){ setLevel(newLevel, false); }
     state.speed = LEVELS[state.level].speed + state.ramp;
 
+    // landmarks (real places you pass)
+    while(state.landmarkIdx < LANDMARKS.length && state.dist >= LANDMARKS[state.landmarkIdx].dist){
+      fireLandmark(LANDMARKS[state.landmarkIdx]);
+      state.landmarkIdx++;
+    }
+
     // spawn
     state.spawnTimer -= dt;
     if(state.spawnTimer <= 0) spawn();
     state.npcTimer -= dt;
     if(state.npcTimer <= 0){ spawnMamaPut(); state.npcTimer = 9 + Math.random()*6; }
+
+    // billboards
+    state.billboardTimer -= dt;
+    if(state.billboardTimer <= 0){ spawnBillboard(); state.billboardTimer = 3.5 + Math.random()*2.5; }
+    for(let i=state.billboards.length-1;i>=0;i--){
+      const b = state.billboards[i];
+      b.x -= state.speed * dt;
+      if(b.x + b.w < -60) state.billboards.splice(i,1);
+    }
 
     // move objects & collide
     const pb = playerBox();
@@ -1031,6 +1109,30 @@
     ctx.restore();
   }
 
+  function drawBillboard(b){
+    const x = b.x, baseY = roadTop + 14;
+    const w = b.w, h = b.h;
+    ctx.save();
+    ctx.fillStyle = '#3a3a3a';
+    ctx.fillRect(x + 18, baseY - 36, 6, 36);
+    ctx.fillRect(x + w - 24, baseY - 36, 6, 36);
+    ctx.fillStyle = '#15151c';
+    roundRect(x, baseY - 36 - h, w, h, 8); ctx.fill();
+    ctx.fillStyle = b.ad.bg;
+    roundRect(x + 4, baseY - 36 - h + 4, w - 8, h - 8, 5); ctx.fill();
+    ctx.font = '26px "Segoe UI Emoji", "Apple Color Emoji", sans-serif';
+    ctx.textAlign = 'center'; ctx.textBaseline = 'middle';
+    ctx.fillText(b.ad.logo, x + 26, baseY - 36 - h/2);
+    ctx.textAlign = 'left';
+    ctx.fillStyle = '#1a1a1a';
+    ctx.font = '900 15px Nunito, sans-serif';
+    ctx.fillText(b.ad.text, x + 46, baseY - 36 - h/2 - 7);
+    ctx.font = '700 10px Nunito, sans-serif';
+    ctx.fillStyle = '#666';
+    ctx.fillText(b.ad.sub, x + 46, baseY - 36 - h/2 + 9);
+    ctx.restore();
+  }
+
   function drawHat(st){
     const c = st.hatColor;
     ctx.save();
@@ -1191,6 +1293,7 @@
     drawSky();
     drawSkyline();
     drawRoad();
+    for(const b of state.billboards) drawBillboard(b);
 
     // objects
     for(const o of state.objs){
